@@ -4,7 +4,7 @@ Connecting Spike Prime to Vuforia
 Download the JS and HTML files and add them to their own folder (I named mine Spike-Prime) under vuforia-spatial-robotic-addon/interfaces/. To run the code, run the file vuforia-spatial-edge-server/index.js. NOTE: The initialize.py file should be in the vuforia-spatial-edge-server folder to properly be seen by this folder's server.js.
 
 Personal Edits:
-* On line 23 of the serial.js file, change the /dev/tty. string to the one corresponding to the Bluetooth serial port on your Spike Prime. This can be found by connecting the Spike Prime over bluetooth, going into terminal and typing cd /dev/tty. (don't forget the dot) and hitting tab. The port should have "/dev/tty.LEGOHub" at the beginning.
+* On line 23 of the serial.js file, change the /dev/tty. string to the one corresponding to the Bluetooth serial port on your Spike Prime. This can be found by connecting the Spike Prime over bluetooth, going into terminal and typing cd /dev/tty. (don't forget the dot) and hitting tab twice. The port should have "/dev/tty.LEGOHub" at the beginning.
 * Make your objects according to https://spatialtoolbox.vuforia.com/docs/use/connect-to-the-physical-world/create-object with the ObjectName: "fileSender" and tool name "code"
 * In the Vuforia app, just add a switch (or something else that will give a value of true) to the button attached to the object. 
 
