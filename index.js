@@ -2,7 +2,6 @@
 //Spike Prime Vuforia
 
 // Variables
-var zerorpc = require("zerorpc");
 var serial = require('./serial.js');
 var server = require('@libraries/hardwareInterfaces');
 var settings = server.loadHardwareInterface(__dirname);
