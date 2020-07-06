@@ -9,9 +9,9 @@ Personal Edits:
 * In the Vuforia app, just add a switch (or something else that will give a value of true) to the button attached to the object. 
 
 Interpreting the Data:
-* The force node returns the percent pushed down it is (with 0 being not at all, and 1 being fully pushed)
-* The distance node returns distance in meters
-* The accelerometer nodes return the data received divided by 5000. This means a reading of gravity is around 0.19-0.20.
+* The force node returns force in Newtons
+* The distance node returns distance in centimeters
+* The accelerometer nodes return the data received. Gravity is around 980.
 * The color node currently cannot return anything because Vuforia does not currently support writing strings to nodes. Instead, if you are running the server in your terminal, the color will be logged there.
 
 Known errors:
