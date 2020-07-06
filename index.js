@@ -73,12 +73,10 @@ function startHardwareInterface() {
 
     // Listens for the stopRead node
 	server.addReadListener(objectName, TOOL_NAME, "stopRead", function(data){
-		// When true, write Control+C a few times to the Spike to stop the read
+		// When true, stop the Spike
         if(data.value == 1){
             console.log('switch on')
-            serial.writePort('\x03')
-            serial.writePort('\x03')
-            serial.writePort('\x03')
+            stopSpike()
 		}
 		if(data.value == 0){
 			console.log('switch off')
@@ -193,9 +191,9 @@ async function sortSensor() {
 
 // Processes distance data
 function processDistance(sensorData) {
-    distance = sensorData * 10
+    distance = sensorData
     //console.log(distance)
-    server.write(objectName, TOOL_NAME, "distance", server.map(distance, 0, 1000, 0, 1), "f")
+    server.write(objectName, TOOL_NAME, "distance", server.map(distance, 0, 100, 0, 100), "f")
 }
 
 // Processes color data
@@ -203,7 +201,7 @@ function processColor(sensorData) {
     color = sensorData
     console.log(color)
     // Waiting for more functionality to be able to write strings
-    //server.write(objectName, TOOL_NAME, "color", server.map(color, 0, 1000, 0, 1), "f")
+    //server.write(objectName, TOOL_NAME, "color", server.map(color, 0, 1000, 0, 1000), "f")
 }
 
 // Processes accelerometer data
@@ -213,16 +211,23 @@ function processAccelerometer(sensorData) {
     accel = accel.replace(/\)/g, '')
     accelArr = accel.split(',').map(x=>+x)
     //console.log(accelArr)
-    server.write(objectName, TOOL_NAME, "accelerometerX", server.map(accelArr[0], 0, 5000, 0, 1), "f")
-    server.write(objectName, TOOL_NAME, "accelerometerY", server.map(accelArr[1], 0, 5000, 0, 1), "f")
-    server.write(objectName, TOOL_NAME, "accelerometerZ", server.map(accelArr[2], 0, 5000, 0, 1), "f")
+    server.write(objectName, TOOL_NAME, "accelerometerX", server.map(accelArr[0], -5000, 5000, -5000, 5000), "f")
+    server.write(objectName, TOOL_NAME, "accelerometerY", server.map(accelArr[1], -5000, 5000, -5000, 5000), "f")
+    server.write(objectName, TOOL_NAME, "accelerometerZ", server.map(accelArr[2], -5000, 5000, -5000, 5000), "f")
 }
 
 // Process force data
 function processForce(sensorData) {
     force = sensorData * 10
     //console.log(force)
-    server.write(objectName, TOOL_NAME, "force", server.map(force, 0, 100, 0, 10), "f")
+    server.write(objectName, TOOL_NAME, "force", server.map(force, 0, 10, 0, 10), "f")
+}
+
+// Send Control + C a few times to kill anything that is running
+function stopSpike() {
+    serial.writePort('\x03')
+    serial.writePort('\x03')
+    serial.writePort('\x03')
 }
 
 function updateEvery(i, time){
@@ -236,4 +241,5 @@ server.addEventListener("initialize", function () {
 });
 
 server.addEventListener("shutdown", function () {
+    stopSpike()
 });
