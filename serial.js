@@ -31,6 +31,7 @@ function openPort() {
 	port.on('open', () => console.log('Port open'))
 	// Use the below line to see what the repl outputs
 	//parser.on('data', console.log)
+	writePort('\x03')
 	setInterval(() => { readMessage(); }, 0);
 }
 
