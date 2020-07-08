@@ -30,7 +30,7 @@ port.pipe(parser)
 function openPort() {
 	port.on('open', () => console.log('Port open'))
 	// Use the below line to see what the repl outputs
-	parser.on('data', console.log)
+	//parser.on('data', console.log)
 	setInterval(() => { readMessage(); }, 0);
 }
 
