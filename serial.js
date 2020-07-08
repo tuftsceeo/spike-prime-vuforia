@@ -30,8 +30,8 @@ port.pipe(parser)
 function openPort() {
 	port.on('open', () => console.log('Port open'))
 	// Use the below line to see what the repl outputs
-	//parser.on('data', console.log)
-	readMessage()
+	parser.on('data', console.log)
+	setInterval(() => { readMessage(); }, 0);
 }
 
 // Reads in from the port and returns the string
@@ -64,7 +64,6 @@ function readMessage() {
 		}
 	})
 	//console.log(sensorReading)
-	setTimeout(() => { readMessage(); }, 0);
 }
 
 // Write a message to the connected device
