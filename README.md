@@ -1,7 +1,7 @@
 # spike-prime-vuforia
 Connecting Spike Prime to Vuforia
 
-Download the JS and HTML files and add them to their own folder (I named mine Spike-Prime) under vuforia-spatial-robotic-addon/interfaces/. To run the code, run the file vuforia-spatial-edge-server/index.js. NOTE: The initialize.py file should be in the vuforia-spatial-edge-server folder to properly be seen by this folder's server.js.
+Download the JS and HTML files and add them to their own folder (I named mine Spike-Prime) under vuforia-spatial-robotic-addon/interfaces/. To run the code, run the file vuforia-spatial-edge-server/server.js. NOTE: The initialize.py file should be in the vuforia-spatial-edge-server folder to properly be seen by this folder's server.js.
 
 Requires readline-sync and serialport to be npm installed in the vuforia-spatial-edge-server folder.
 
