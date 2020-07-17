@@ -10,40 +10,63 @@ var noble = require('@abandonware/noble');
 var colors = ["black", "violet", "blue", "cyan", "green", "yellow", "red", "white"]
 var portLetters = ["A", "B", "C", "D", "E", "F"]
 var ports = ["none", "none", "none", "none", "none", "none"]
-var sensorData, arr, isReading
+var sensorData, arr
 var distance, color, accel, accelArr
 var [motor1, motor2, motor3, distanceSensor, colorSensor, forceSensor] = ports
 var firstMotor, secondMotor, thirdMotor
 var TOOL_NAME = "code"
+var runMotors = true
+var sensorRefresh = 50
+
+let objectName = 'spikeNode';
 
 exports.enabled = settings('enabled');
 exports.configurable = true;
 
-if (exports.enabled){
-    
-    // Code executed when your robotic addon is enabled
-    setup();
-
+// Send the initialize file to the Spike Prime, which determines motor/sensor ports
+try {
     serial.openPort()
     serial.sendFile('initialize.py')
     initializePorts()
+} catch(e) {
+    console.log('Spike Prime NOT connected')
+}
+
+if (exports.enabled){
+    // Code executed when your robotic addon is enabled
+    setup();
+
+    console.log('Spike: Settings loaded: ', objectName)
 
     console.log("Spike is connected");
 
     function setup() {
     	exports.settings = {
     		// Object
-            objectName: {
-    			value: settings('objectName'),
+            spikeName: {
+    			value: settings('objectName', 'spikeNode'),
     			type: 'text',
-    			default: 'fileSender',
+    			default: 'spikeNode',
     			disabled: false,
     			helpText: 'The name of the object that connects to this hardware interface.'
-    		}
+            },
+            complexity: {
+                value: settings('complexity', 'advanced'),
+                type: 'text',
+                default: 'advanced',
+                disabled: false,
+                helpText: 'The complexity of the interface. "beginner" gives a few nodes, "intermediate" \
+                gives more, and "advanced" gives full control. If you want super accurate sensor data, \
+                you can use the complexity "sensor" to get faster sensor data in exchange for no motor control.'
+            }
+    		
     	};
     }
 
-    objectName = exports.settings.objectName.value;
+    objectName = exports.settings.spikeName.value;
+    complexity = exports.settings.complexity.value.toLowerCase();
+    console.log("Spike: " + objectName)
+    console.log("with complexity: " + complexity)
 
     server.addEventListener('reset', function () {
     	settings = server.loadHardwareInterface(__dirname);
@@ -60,110 +83,164 @@ function startHardwareInterface() {
 	server.enableDeveloperUI(true)
 
     // Adds sensor nodes to the object on the app
-    server.addNode(objectName, TOOL_NAME, "stopRead", "node");
-	//server.addNode(objectName, TOOL_NAME, "color", "node");
-    server.addNode(objectName, TOOL_NAME, "distance", "node");
-    server.addNode(objectName, TOOL_NAME, "force", "node");
-    server.addNode(objectName, TOOL_NAME, "accelerometerX", "node");
-    server.addNode(objectName, TOOL_NAME, "accelerometerY", "node");
-    server.addNode(objectName, TOOL_NAME, "accelerometerZ", "node");
+    server.addNode(objectName, TOOL_NAME, "stopMotors", "node", {x: 0, y: 125, scale:0.175});
+	server.addNode(objectName, TOOL_NAME, "color", "node", {x: 75, y: -175, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "distance", "node", {x: 0, y: -175, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "force", "node", {x: -75, y: -175, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "accelerometerX", "node", {x: -125, y: -100, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "accelerometerY", "node", {x: -125, y: -25, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "accelerometerZ", "node", {x: -125, y: 50, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "gyroscopeX", "node", {x: -200, y: -100, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "gyroscopeY", "node", {x: -200, y: -25, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "gyroscopeZ", "node", {x: -200, y: 50, scale:0.175});
 
     // Adds motor nodes to the object on the app
-    server.addNode(objectName, TOOL_NAME, "motor1", "node");
-    server.addNode(objectName, TOOL_NAME, "motor2", "node");
-    server.addNode(objectName, TOOL_NAME, "motor3", "node");
+    server.addNode(objectName, TOOL_NAME, "motor1", "node", {x: 125, y: -100, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "motor2", "node", {x: 125, y: -25, scale:0.175});
+    server.addNode(objectName, TOOL_NAME, "motor3", "node", {x: 125, y: 50, scale:0.175});
+
+    // Removes nodes that are only found in beginner
+    server.removeNode(objectName, TOOL_NAME, "LED")
+    server.removeNode(objectName, TOOL_NAME, "screen")
+    server.removeNode(objectName, TOOL_NAME, "motors")    
+
+    if (complexity == 'beginner' || complexity == 'intermediate') {
+        // Remove the accelerometer/gyroscope nodes
+        server.removeNode(objectName, TOOL_NAME, "accelerometerX")
+        server.removeNode(objectName, TOOL_NAME, "accelerometerY")
+        server.removeNode(objectName, TOOL_NAME, "accelerometerZ")
+        server.removeNode(objectName, TOOL_NAME, "gyroscopeX")
+        server.removeNode(objectName, TOOL_NAME, "gyroscopeY")
+        server.removeNode(objectName, TOOL_NAME, "gyroscopeZ")
+
+        
+        if (complexity == 'beginner') {
+            // Removing more nodes for beginner
+            server.removeNode(objectName, TOOL_NAME, "color")
+            server.removeNode(objectName, TOOL_NAME, "force")
+            server.removeNode(objectName, TOOL_NAME, "motor1")
+            server.removeNode(objectName, TOOL_NAME, "motor2")
+            server.removeNode(objectName, TOOL_NAME, "motor3")
+
+            // Adding LED and Screen nodes and moving the distance node
+            server.addNode(objectName, TOOL_NAME, "screen", "node", {x: -125, y: -25, scale:0.175});
+            server.addNode(objectName, TOOL_NAME, "LED", "node", {x: -125, y: 50, scale:0.175});
+            server.addNode(objectName, TOOL_NAME, "motors", "node", {x: 125, y: -25, scale:0.175});
+            server.moveNode(objectName, TOOL_NAME, "distance", 125, 50)
+
+            // Increases the sensor refresh rate due to more things being sent
+            sensorRefresh = 100
+        }
+        else {
+            // Moving nodes for intermediate
+            server.moveNode(objectName, TOOL_NAME, "color", -125, -100)
+            server.moveNode(objectName, TOOL_NAME, "distance", -125, -25)
+            server.moveNode(objectName, TOOL_NAME, "force", -125, 50)
+        }
+    }
+
+    if (complexity == 'sensor') {
+        // Remove the motor nodes for sensor
+        server.removeNode(objectName, TOOL_NAME, "motor1")
+        server.removeNode(objectName, TOOL_NAME, "motor2")
+        server.removeNode(objectName, TOOL_NAME, "motor3")
+        server.removeNode(objectName, TOOL_NAME, "stopMotors")
+        server.moveNode(objectName, TOOL_NAME, "color", 125, -100)
+        server.moveNode(objectName, TOOL_NAME, "distance", 125, -25)
+        server.moveNode(objectName, TOOL_NAME, "force", 125, 50)
+
+        // Sets the refresh rate for the sensors to 10
+        sensorRefresh = 10
+    }
+
+    if (complexity == 'advanced') { 
+        // Moves nodes for advanced
+        server.moveNode(objectName, TOOL_NAME, "color", 75, -175)
+        server.moveNode(objectName, TOOL_NAME, "distance", 0, -175)
+        server.moveNode(objectName, TOOL_NAME, "force", -75, -175)
+    }
 
     // Constantly sort the sensor data
     setInterval(() => { sortSensor(); }, 10);
 
-    // Listens for the stopRead node
-	server.addReadListener(objectName, TOOL_NAME, "stopRead", function(data){
-		// When true, stop the Spike
-        if(data.value == 1) {
-            console.log('switch on')
-            stopRead()
-            isReading = true
+    // Listens for the stopMotors node
+	server.addReadListener(objectName, TOOL_NAME, "stopMotors", function(data){
+		// When true, stop the Spike motors
+        if (data.value == 1) {
+            console.log('motors off')
+            stopMotors()
 		}
-		if(data.value == 0) {
-			console.log('switch off')
-            continuousSensor()
-		}	
+        if (data.value == 0) {
+            runMotors = true
+        }
 	});
 
     // Listen for the motor1 node
     server.addReadListener(objectName, TOOL_NAME, "motor1", function(data){
-        // When true, turn the motor on at the speed
-        /*if(data.value == 1) {
-            console.log('motor1 on')
-            if(isReading) {
-                stopRead()
-            }
-            setTimeout(() => { serial.writePort(motor1 + ".start(10)\r\n") }, 10);
+        if (runMotors) {
+            setTimeout(() => { serial.writePort(motor1 + ".start(" + Math.round(data.value) + ")\r\n") }, 0);
         }
-        if(data.value == 0) {
-            console.log('motor1 off')
-            if(isReading) {
-                stopRead()
-            }
-            setTimeout(() => { serial.writePort(motor1 + ".stop()\r\n") }, 10);
-        }*/
-        if(isReading) {
-            stopRead()
+        else {
+            stopMotors()
         }
-        setTimeout(() => { serial.writePort(motor1 + ".start(" + data.value/2 + ")\r\n") }, 10);
     });
 
     // Listen for the motor2 node
     server.addReadListener(objectName, TOOL_NAME, "motor2", function(data){
-        // When true, turn the motor on at the speed
-        /*if(data.value == 1) {
-            console.log('motor2 on')
-            if(isReading) {
-                stopRead()
-            }
-            setTimeout(() => { serial.writePort(motor2 + ".start(-10)\r\n") }, 10);
+        if (runMotors) {
+            setTimeout(() => { serial.writePort(motor2 + ".start(" + Math.round(data.value) + ")\r\n") }, 0);
         }
-        if(data.value == 0) {
-            console.log('motor2 off')
-            if(isReading) {
-                stopRead()
-            }
-            setTimeout(() => { serial.writePort(motor2 + ".stop()\r\n") }, 10);
-        }*/
-        if(isReading) {
-            stopRead()
+        else {
+            stopMotors()
         }
-        setTimeout(() => { serial.writePort(motor2 + ".start(" + -1 * data.value/2 + ")\r\n") }, 10);
     });
 
     // Listen for the motor3 node
     server.addReadListener(objectName, TOOL_NAME, "motor3", function(data){
-        // When true, turn the motor on at the speed
-        if(data.value == 1) {
-            console.log('motor3 on')
-            if(isReading) {
-                stopRead()
-            }
-            setTimeout(() => { serial.writePort(motor3 + ".start(-10)\r\n") }, 10);
+        if (runMotors) {
+            setTimeout(() => { serial.writePort(motor3 + ".start(" + Math.round(data.value) + ")\r\n") }, 0);
         }
-        if(data.value == 0) {
-            console.log('motor3 off')
-            if(isReading) {
-                stopRead()
-            }
-            setTimeout(() => { serial.writePort(motor3 + ".stop()\r\n") }, 10);
-        }   
+        else {
+            stopMotors()
+        }
     });
 
-    setInterval(() => { checkReading(); }, 1000);
+    // Listens for the motors node (used in beginner setting to control all motors)
+    server.addReadListener(objectName, TOOL_NAME, "motors", function(data){
+        if(runMotors) {
+            if (motor1 != 'none') {
+                setTimeout(() => { serial.writePort(motor1 + ".start(" + Math.round(data.value) + ")\r\n") }, 0);
+            }
+            if (motor2 != 'none') {
+                setTimeout(() => { serial.writePort(motor2 + ".start(" + Math.round(-data.value) + ")\r\n") }, 0);
+            }
+            if (motor3 != 'none') {
+                setTimeout(() => { serial.writePort(motor3 + ".start(" + Math.round(-data.value) + ")\r\n") }, 0);
+            }
+        }
+        else {
+            stopMotors()
+        }
+    });
 
-	updateEvery(0, 100);
+    // Listen for the screen node
+    server.addReadListener(objectName, TOOL_NAME, "screen", function(data){
+        setTimeout(() => { serial.writePort("hub.display.show(\"" + data.value + "\")\r\n") }, 0);
+    });
+
+    server.addReadListener(objectName, TOOL_NAME, "LED", function(data){
+        setTimeout(() => { serial.writePort("hub.led(" + data.value + ")\r\n") }, 0)
+    })
+
+    // Constantly read the sensor data
+    setInterval(() => { continuousSensor(); }, sensorRefresh)
+	updateEvery(0, 10);
 }
 
 // Gets the port ordering from the Spike Prime, which initialized itself
 function initializePorts() {
     sensorData = readSensor()
-    if (sensorData.includes('[')) {
+    if (sensorData.includes('[') && sensorData.includes(',')) {
         sensorData = sensorData.substring(1, sensorData.length - 2)
         sensorData = sensorData.replace(/'/g, '')
         sensorData = sensorData.replace(/ /g, '')
@@ -173,7 +250,7 @@ function initializePorts() {
         }
         console.log(ports)
         definePorts()
-        continuousSensor()
+        //setTimeout(() => { continuousSensor(); }, 1000)
     }
     else {
         setTimeout(() => { initializePorts(); }, 0);
@@ -213,30 +290,9 @@ function readSensor() {
     return sensorData
 }
 
-// Tells the Spike to continutiously print color, force, distance, and accelerometer data
+// Tells the Spike to execute the read function defined in initialize.py
 function continuousSensor() {
-    isReading = true
-    serial.writePort("while True:\r\n");
-    if (colorSensor != "none") {
-        serial.writePort("\tprint(" + colorSensor + ".get_color())\r\n")
-    }
-    if (distanceSensor != "none") {
-        serial.writePort("\tprint(" + distanceSensor + ".get_distance_cm())\r\n")
-    }
-    if (forceSensor != "none") {
-        serial.writePort("\tprint(" + forceSensor + ".get_force_percentage()/100)\r\n")
-    }
-    serial.writePort("\tutime.sleep_ms(5)\r\n")
-    serial.writePort("\tprint(hub.motion.accelerometer())\r\n")
-    serial.writePort("\r\n\r\n\r\n\r\n")
-}
-
-function checkReading() {
-    console.log("checking")
-    if(!isReading) {
-        console.log("reading")
-        setTimeout(() => { continuousSensor(); }, 100);
-    }
+    serial.writePort("read()\r\n")
 }
 
 // Sorts the sensor data and sends it to the appropriate process function
@@ -254,7 +310,7 @@ async function sortSensor() {
     else if (!isNaN(sensorData) && parseInt(sensorData) > 1 && sensorData.toString().length > 0) {
         processDistance(sensorData)
     }
-    else if (arr.length == 3) {
+    else if (arr.length == 6) {
         processAccelerometer(sensorData)
     }
 }
@@ -269,9 +325,8 @@ function processDistance(sensorData) {
 // Processes color data
 function processColor(sensorData) {
     color = sensorData
-    console.log(color)
-    // Waiting for more functionality to be able to write strings
-    //server.write(objectName, TOOL_NAME, "color", server.map(color, 0, 1000, 0, 1000), "f")
+    //console.log(color)
+    server.write(objectName, TOOL_NAME, "color", color, "f")
 }
 
 // Processes accelerometer data
@@ -284,6 +339,9 @@ function processAccelerometer(sensorData) {
     server.write(objectName, TOOL_NAME, "accelerometerX", server.map(accelArr[0], -5000, 5000, -5000, 5000), "f")
     server.write(objectName, TOOL_NAME, "accelerometerY", server.map(accelArr[1], -5000, 5000, -5000, 5000), "f")
     server.write(objectName, TOOL_NAME, "accelerometerZ", server.map(accelArr[2], -5000, 5000, -5000, 5000), "f")
+    server.write(objectName, TOOL_NAME, "gyroscopeX", server.map(accelArr[3], -5000, 5000, -5000, 5000), "f")
+    server.write(objectName, TOOL_NAME, "gyroscopeY", server.map(accelArr[4], -5000, 5000, -5000, 5000), "f")
+    server.write(objectName, TOOL_NAME, "gyroscopeZ", server.map(accelArr[5], -5000, 5000, -5000, 5000), "f")
 }
 
 // Process force data
@@ -293,12 +351,18 @@ function processForce(sensorData) {
     server.write(objectName, TOOL_NAME, "force", server.map(force, 0, 10, 0, 10), "f")
 }
 
-// Send Control + C a few times to kill anything that is running
-function stopRead() {
-    isReading = false
-    serial.writePort('\x03')
-    serial.writePort('\x03')
-    serial.writePort('\x03')
+// Send commands to stop all the motors
+function stopMotors() {
+    runMotors = false
+    if (motor1 != "none") {
+        serial.writePort(motor1 + ".stop()\r\n")
+    }
+    if (motor2 != "none") {
+        serial.writePort(motor2 + ".stop()\r\n")
+    }
+    if (motor3 != "none") {
+        serial.writePort(motor3 + ".stop()\r\n")
+    }
 }
 
 function updateEvery(i, time){
@@ -308,9 +372,9 @@ function updateEvery(i, time){
 }
 
 server.addEventListener("initialize", function () {
-    if (exports.enabled) setTimeout(() => { startHardwareInterface() }, 2000)
+    if (exports.enabled) setTimeout(() => { startHardwareInterface() }, 10000)
 });
 
 server.addEventListener("shutdown", function () {
-    stopRead()
+    stopMotors()
 });
