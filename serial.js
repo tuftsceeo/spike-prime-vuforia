@@ -19,7 +19,7 @@ const parser = new parsers.Readline({
 	delimiter: '\r\n',
 })
 
-// The port to connect to (in this case it's a bluetooth serial connection)
+// The port to connect to (CHANGE TO YOUR SERAIL PORT)
 const port = new SerialPort('/dev/tty.LEGOHub40BD3248762A-Ser', {
 	baudRate: 115200,
 })
@@ -29,26 +29,28 @@ port.pipe(parser)
 // Connected to the serial port
 function openPort() {
 	port.on('open', () => console.log('Port open'))
-	// Use the below line to see what the repl outputs
+	// Use the below line to see what the REPL outputs
 	//parser.on('data', console.log)
 	writePort('\x03')
 	setInterval(() => { readMessage(); }, 0);
 }
 
-// Reads in from the port and returns the string
+// Reads in from the port and sets sensorReading to be the most recent non-empty line
 function readMessage() {
 	port.on('readable', function() {
 		raw = port.read()
 		if (raw != null) {
 			sensorReading = raw.toString('utf8')
-			//console.log(sensorReading)
+			// Checks to see if there is exactly one enter line
 			if (((sensorReading.match(/\n/g) || []).length) == 1)  {
-				//console.log(sensorReading)
+				//Do nothing
 			}
+			// If there is not exactly one enter line, then split at the enters, and take the most recent line that has data
 			else {
 				arr = sensorReading.split('\n')
 				i = 1
 				while (i < arr.length) {
+					// Eliminates lines that are either empty or were code that we excuted
 					if (arr[arr.length-i].includes(">") || arr[arr.length-i].includes("...") || arr[arr.length-i] === "") {
 						i = i + 1
 					}
@@ -61,7 +63,6 @@ function readMessage() {
 			sensorReading = sensorReading.replace(/>>>/g, '')
 			sensorReading = sensorReading.replace(/\n/g, '')
 			sensorReading = sensorReading.replace(/\r/g, '')
-
 		}
 	})
 	//console.log(sensorReading)
@@ -72,7 +73,7 @@ function writePort(msg) {
 	port.write(msg)
 }
 
-// Get the name of the file that is to be sent over the serial port
+// Get the name of the file that is to be sent over the serial port (not used in index.js)
 function getFileName() {
 	name = syncReader.question('What file would you like to send?', {
 		});
@@ -80,7 +81,7 @@ function getFileName() {
 	sendFile(name)
 }
 
-// Read in the file line by line and send each line
+// Read in the file line by line and send each line to the Spike Prime
 async function sendFile(name) {
 	const fileStream = fs.createReadStream(name);
 
@@ -138,7 +139,7 @@ async function sendFile(name) {
 // Get the file name, which in turn reads and sends the file
 //setTimeout(() => { getFileName(); }, 10000);
 
-// Functions to export to other files
+// Functions to export to other files (right now, only index.js uses these)
 module.exports = {
 	getSensor: function() {
 		return sensorReading;
